@@ -13,10 +13,10 @@ void debug(char* str, ...)
 }
 
 // just reads input from stdin
-int _getline(char* b, FILE* f)
+int _getline(char* b, int max, FILE* f)
 {
     int i, c;
-    for (i = 0; (c=getc(f)) != EOF && c != '\n'; i++)
+    for (i = 0; i < max && (c=getc(f)) != EOF && c != '\n'; i++)
         b[i] = c;
     if (i == 0 && c == '\n')
         b[i++] = '\n';
