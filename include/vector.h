@@ -20,12 +20,13 @@ void vector_push(vector* v, void* x)
    }
 
    // copy byte at a time
-   unsigned char *cx = x, *ce = v->end;
-   for (int i = 0; i < v->size; i++)
-       ce[i] = cx[i];
+    unsigned char *cx = x, *ce = v->end;
+    for (int i = 0; i < v->size; i++)
+        ce[i] = cx[i];
+    // memcpy(v->end, x, v->size);
 
-   v->length++;
-   v->end += v->size;
+    v->length++;
+    v->end += v->size;
 }
 
 void* vector_index(vector* v, size_t x)
