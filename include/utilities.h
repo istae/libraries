@@ -1,6 +1,9 @@
 #pragma once
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
+
+// returns lower bound on SORTED array
 
 void debug(char* str, ...)
 {
@@ -27,8 +30,8 @@ int _getline(char* b, int max, FILE* f)
 char* fget(char *path)
 {
   FILE *f = fopen (path, "rb");
-  char *buffer;
-  long length;
+  char *buffer = NULL;
+  long length = 0;
 
   if (f) {
     fseek (f, 0, SEEK_END);
@@ -54,4 +57,53 @@ void freelist(int len, ...)
         free(p);
     }
     va_end(args);
+}
+
+void _swap(void* a, void* b, const size_t size)
+{
+    //swap byte at a time
+    unsigned char *p = a, *q = b, tmp;
+    for (size_t i = 0; i != size; ++i) {
+        tmp = p[i];
+        p[i] = q[i];
+        q[i] = tmp;
+    }
+}
+
+// partitions the array and returns the index of the first item that returns true from the CMP function
+int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
+{
+    if (len == 0)
+        return -1;
+
+    for(int i=0; ;i++) {
+        if (!cmp(a+(i*size))) {
+            do {
+                --len;
+                if (len < i)
+                    return len+1;
+            }
+            while (!cmp(a+(len*size)));
+            _swap(a+(i*size), a+(len*size), size);
+        }
+    }
+}
+
+// 1) array 2) array length 3) item to find 4) item size
+int lower_bound(void* n, const int len, void* m, const int size)
+{
+    int b = 0;
+    int e = len-1;
+    int mid = (e + b) / 2;
+    while (b <= e) {
+        int cmp = memcmp(n+(mid*size), m, size);
+        if (cmp < 0)
+            b = mid+1;
+        else if (cmp > 0)
+            e = mid - 1;
+        else
+            return mid;
+        mid = (e + b) / 2;
+    }
+    return b;
 }

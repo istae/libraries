@@ -1,10 +1,10 @@
 #pragma once
+#include "utilities.h"
 
 typedef struct vector {
-    size_t length;      // vector length
+    int size;
+    int length;
     void* begin;
-    int size;        // type size
-    // size_t capacity;
     void* end;
     void* cap;
 } vector;
@@ -16,7 +16,6 @@ void vector_push(vector* v, void* x)
        v->begin = realloc(v->begin, v->size * v->length * 2);
        v->end = v->begin + (v->size * v->length);
        v->cap = v->begin + (v->size * v->length * 2);
-    //    v->capacity = v->size * v->length * 2;
    }
 
    // copy byte at a time
@@ -29,9 +28,20 @@ void vector_push(vector* v, void* x)
     v->end += v->size;
 }
 
-void* vector_index(vector* v, size_t x)
+void* vector_index(vector* v, int x)
 {
    return v->begin + x * v->size;
+}
+
+// 1) vector pointer 2) object to insert, 3) insert position
+void vector_insert(vector* v, void* x, int pos)
+{
+    vector_push(v, x);
+    if (pos >= v->length)
+        return;
+    void* start = vector_index(v, pos);
+    memmove(start + v->size, start, v->size * (v->length - pos)); // this is broken fix this!!!!!!!
+    memmove(start, x, v->size);
 }
 
 void vector_dest(vector* v)
@@ -39,7 +49,6 @@ void vector_dest(vector* v)
    free(v->begin);
 }
 
-// initial vector capacity is len
 void vector_init(vector* v, int size, size_t cap)
 {
    if (cap <= 0)
@@ -47,8 +56,6 @@ void vector_init(vector* v, int size, size_t cap)
 
    v->length = 0;
    v->size = size;
-   // v->capacity = cap;
-
    v->begin = malloc(size*cap);
    v->end = v->begin;
    v->cap = v->begin + (size*cap);
