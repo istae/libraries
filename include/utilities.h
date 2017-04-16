@@ -59,7 +59,7 @@ void freelist(int len, ...)
     va_end(args);
 }
 
-void _swap(void* a, void* b, const size_t size)
+void _p_swap(void* a, void* b, const size_t size)
 {
     //swap byte at a time
     unsigned char *p = a, *q = b, tmp;
@@ -84,7 +84,7 @@ int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
                     return len+1;
             }
             while (!cmp(a+(len*size)));
-            _swap(a+(i*size), a+(len*size), size);
+            _p_swap(a+(i*size), a+(len*size), size);
         }
     }
 }
@@ -132,4 +132,35 @@ int binary_search(void* a, const int len, void* m, const int size)
         return 1;
     else
         return 0;
+}
+
+// give this an array of int, and see how bits are organized in memory
+int issorted_print(void* a, const int len, const int size)
+{
+    for (int i=1; i < len; i++) {
+        unsigned char* x = a + ((i - 1) * size);
+        unsigned char* y = a + (i * size);
+        printf("%d %d\n", *(int*)(a + ((i - 1) * size)), *(int*)(a + (i * size)));
+        printf("----------------\n");
+        for (int j=size-1; j >= 0; j--) {
+            printf("%d %d\n", x[j], y[j]);
+        }
+        printf("\n");
+    }
+    return 1;
+}
+
+int issorted(void* a, const int len, const int size)
+{
+    for (int i=1; i < len; i++) {
+        unsigned char* x = a + ((i - 1) * size);
+        unsigned char* y = a + (i * size);
+        for (int j=size-1; j >= 0; j--) {
+            if (y[j] > x[j])
+                break;
+            if (y[j] < x[j])
+                return 0;
+        }
+    }
+    return 1;
 }

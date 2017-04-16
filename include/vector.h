@@ -16,6 +16,7 @@ void vector_push(vector* v, void* x)
        void* tmp = realloc(v->begin, v->size * v->length * 2);
        if (tmp == NULL) {
            fprintf(stderr, "vector: realloc failed\n");
+           free(v->begin);
            exit(1);
        }
        v->begin = tmp;
@@ -57,7 +58,7 @@ void vector_insert_int(vector* v,int x, int pos)
         return;
 
     int* start = vector_index(v, pos);
-    memmove(start+1, start, (v->length - pos - 1)*sizeof(int));
+    memcpy(start+1, start, (v->length - pos - 1)*sizeof(int));
     memcpy(start, &x, v->size);
 }
 
@@ -75,7 +76,7 @@ void vector_init(vector* v, int size, size_t cap)
    v->size = size;
    v->begin = malloc(size*cap);
    if (v->begin == NULL) {
-       fprintf(stderr, "vector init malloc returned null\n");
+       fprintf(stderr, "vector: init malloc failedl\n");
        exit(1);
    }
    v->end = v->begin;
