@@ -125,6 +125,14 @@ int lower_bound_int(int* n, int len, int m)
     return b;
 }
 
+int binary_search_int(int* a, const int len, int m)
+{
+    int pos = lower_bound_int(a, len, m);
+    if (pos < len && a[pos] == m)
+        return 1;
+    return 0;
+}
+
 int binary_search(void* a, const int len, void* m, const int size)
 {
     int pos = lower_bound(a, len, m, size);
@@ -143,13 +151,15 @@ int issorted_print(void* a, const int len, const int size)
         printf("%d %d\n", *(int*)(a + ((i - 1) * size)), *(int*)(a + (i * size)));
         printf("----------------\n");
         for (int j=size-1; j >= 0; j--) {
-            printf("%d %d\n", x[j], y[j]);
+            printf("%p: %d\t%p: %d\n", x+j, x[j], y+j, y[j]);
         }
         printf("\n");
     }
     return 1;
 }
 
+// little endian vs big endian issue (first time i came across it :)
+// turns out my machine is little ;)
 int issorted(void* a, const int len, const int size)
 {
     for (int i=1; i < len; i++) {
@@ -162,5 +172,13 @@ int issorted(void* a, const int len, const int size)
                 return 0;
         }
     }
+    return 1;
+}
+
+int issorted_int(int* a, const int len)
+{
+    for (int i=1; i < len; i++)
+        if (a[i] < a[i-1])
+            return 0;
     return 1;
 }
