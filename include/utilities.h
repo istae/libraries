@@ -89,14 +89,14 @@ int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
     }
 }
 
-// 1) array 2) array length 3) item to find 4) item size
-int lower_bound(void* n, const int len, void* m, const int size)
+// 1) pointer 2) array length 3) item to find 4) item size
+int lower_bound(void* a, const int len, void* m, const int size)
 {
     int b = 0;
     int e = len-1;
     int mid = (e + b) / 2;
     while (b <= e) {
-        int cmp = memcmp(n+(mid*size), m, size);
+        int cmp = memcmp(a + (mid * size), m, size);
         if (cmp < 0)
             b = mid+1;
         else if (cmp > 0)
@@ -106,4 +106,30 @@ int lower_bound(void* n, const int len, void* m, const int size)
         mid = (e + b) / 2;
     }
     return b;
+}
+
+int lower_bound_int(int* n, int len, int m)
+{
+    int b = 0;
+    int e = len-1;
+    int mid = (e + b) / 2;
+    while (b <= e) {
+        if (n[mid] < m)
+            b = mid+1;
+        else if (n[mid] > 0)
+            e = mid - 1;
+        else
+            return mid;
+        mid = (e + b) / 2;
+    }
+    return b;
+}
+
+int binary_search(void* a, const int len, void* m, const int size)
+{
+    int pos = lower_bound(a, len, m, size);
+    if (pos < len && memcmp(a + (pos * size), m, size) == 0)
+        return 1;
+    else
+        return 0;
 }

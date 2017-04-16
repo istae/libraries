@@ -1,6 +1,6 @@
 #pragma once
 #include "utilities.h"
-
+#include <assert.h>
 typedef struct vector {
     int size;
     int length;
@@ -13,15 +13,20 @@ typedef struct vector {
 void vector_push(vector* v, void* x)
 {
    if (v->end == v->cap) {
-       v->begin = realloc(v->begin, v->size * v->length * 2);
+       void* tmp = realloc(v->begin, v->size * v->length * 2);
+       if (tmp == NULL) {
+           fprintf(stderr, "vector: realloc failed\n");
+           exit(1);
+       }
+       v->begin = tmp;
        v->end = v->begin + (v->size * v->length);
        v->cap = v->begin + (v->size * v->length * 2);
    }
 
    // copy byte at a time
-    // unsigned char *cx = x, *ce = v->end;
-    // for (int i = 0; i < v->size; i++)
-    //     ce[i] = cx[i];
+   //  unsigned char *cx = x, *ce = v->end;
+   //  for (int i = 0; i < v->size; i++)
+   //      ce[i] = cx[i];
      memcpy(v->end, x, v->size);
 
     v->length++;
@@ -39,9 +44,21 @@ void vector_insert(vector* v, void* x, int pos)
     vector_push(v, x);
     if (pos >= v->length)
         return;
+
     void* start = vector_index(v, pos);
-    memmove(start + v->size, start, v->size * (v->length - pos)); // this is broken fix this!!!!!!!
-    memmove(start, x, v->size);
+    memmove(start + v->size, start, v->size * (v->length - pos - 1)); // this is broken fix this!!!!!!!
+    memcpy(start, x, v->size);
+}
+
+void vector_insert_int(vector* v,int x, int pos)
+{
+    vector_push(v, &x);
+    if (pos >= v->length)
+        return;
+
+    int* start = vector_index(v, pos);
+    memmove(start+1, start, (v->length - pos - 1)*sizeof(int));
+    memcpy(start, &x, v->size);
 }
 
 void vector_dest(vector* v)
@@ -57,6 +74,10 @@ void vector_init(vector* v, int size, size_t cap)
    v->length = 0;
    v->size = size;
    v->begin = malloc(size*cap);
+   if (v->begin == NULL) {
+       fprintf(stderr, "vector init malloc returned null\n");
+       exit(1);
+   }
    v->end = v->begin;
    v->cap = v->begin + (size*cap);
 }
