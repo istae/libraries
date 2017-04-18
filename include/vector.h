@@ -9,26 +9,32 @@ typedef struct vector {
     void* cap;
 } vector;
 
+void vector_realloc(vector* v)
+{
+    if (v->end == v->cap) {
+        void* tmp = realloc(v->begin, v->size * v->length * 2);
+        if (tmp == NULL) {
+            fprintf(stderr, "vector: realloc failed\n");
+            free(v->begin);
+            exit(1);
+        }
+        v->begin = tmp;
+        v->end = v->begin + (v->size * v->length);
+        v->cap = v->begin + (v->size * v->length * 2);
+    }
+}
+
 // x MUST BE AN L-VALUE
 void vector_push(vector* v, void* x)
 {
-   if (v->end == v->cap) {
-       void* tmp = realloc(v->begin, v->size * v->length * 2);
-       if (tmp == NULL) {
-           fprintf(stderr, "vector: realloc failed\n");
-           free(v->begin);
-           exit(1);
-       }
-       v->begin = tmp;
-       v->end = v->begin + (v->size * v->length);
-       v->cap = v->begin + (v->size * v->length * 2);
-   }
+
+    vector_realloc(v);
 
    // copy byte at a time
    //  unsigned char *cx = x, *ce = v->end;
    //  for (int i = 0; i < v->size; i++)
    //      ce[i] = cx[i];
-     memcpy(v->end, x, v->size);
+   memcpy(v->end, x, v->size);
 
     v->length++;
     v->end += v->size;
@@ -42,7 +48,7 @@ void* vector_index(vector* v, int x)
 // 1) vector pointer 2) object to insert, 3) insert position
 void vector_insert(vector* v, void* x, int pos)
 {
-    vector_push(v, x);
+    vector_realloc(v);
     if (pos >= v->length)
         return;
 
@@ -53,7 +59,7 @@ void vector_insert(vector* v, void* x, int pos)
 
 void vector_insert_int(vector* v,int x, int pos)
 {
-    vector_push(v, &x);
+    vector_realloc(v);
     if (pos >= v->length)
         return;
 
