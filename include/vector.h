@@ -52,7 +52,7 @@ void vector_insert(vector* v, void* x, int pos)
 
 void vector_insert_int(vector* v,int x, int pos)
 {
-    vector_realloc(v);
+    vector_push(v, &x);
     if (pos >= v->length)
         return;
 
