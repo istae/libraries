@@ -27,17 +27,10 @@ void vector_realloc(vector* v)
 // x MUST BE AN L-VALUE
 void vector_push(vector* v, void* x)
 {
-
     vector_realloc(v);
-
-   // copy byte at a time
-   //  unsigned char *cx = x, *ce = v->end;
-   //  for (int i = 0; i < v->size; i++)
-   //      ce[i] = cx[i];
-   memcpy(v->end, x, v->size);
-
-    v->length++;
+    memcpy(v->end, x, v->size);
     v->end += v->size;
+    v->length++;
 }
 
 void* vector_index(vector* v, int x)
@@ -48,7 +41,7 @@ void* vector_index(vector* v, int x)
 // 1) vector pointer 2) object to insert, 3) insert position
 void vector_insert(vector* v, void* x, int pos)
 {
-    vector_realloc(v);
+    vector_push(v, x);
     if (pos >= v->length)
         return;
 
