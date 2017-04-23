@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// returns lower bound on SORTED array
+#define ERROR_EXIT(str) do {fprintf(stderr, "%s\n", str); exit(1);} while(0)
 
 void debug(char* str, ...)
 {
@@ -27,24 +27,22 @@ int _getline(char* b, int max, FILE* f)
     return i;
 }
 
-char* fget(char *path)
+char* fget(char* path, char* mode)
 {
-  FILE *f = fopen (path, "rb");
-  char *buffer = NULL;
-  long length = 0;
-
-  if (f) {
-    fseek (f, 0, SEEK_END);
-    length = ftell (f);
-    rewind(f);
-    buffer = malloc(length);
-    if (buffer) {
-      fread (buffer, 1, length, f);
+    char *buffer = NULL;
+    FILE *f = fopen (path, mode);
+    if (f) {
+        fseek (f, 0, SEEK_END);
+        long length = ftell (f);
+        rewind(f);
+        buffer = malloc(length);
+        if (buffer != NULL) {
+            fread (buffer, 1, length, f);
+            fclose (f);
+            buffer[length] = '\0';
+        }
     }
-    fclose (f);
-  }
-  buffer[length] = '\0';
-  return buffer;
+    return buffer;
 }
 
 void freelist(int len, ...)

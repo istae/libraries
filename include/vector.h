@@ -1,6 +1,8 @@
 #pragma once
 #include "utilities.h"
-#include <assert.h>
+
+// ERROR_EXIT is a macro defined in utilities.h
+
 typedef struct vector {
     int size;
     int length;
@@ -14,9 +16,8 @@ void vector_realloc(vector* v)
     if (v->end == v->cap) {
         void* tmp = realloc(v->begin, v->size * v->length * 2);
         if (tmp == NULL) {
-            fprintf(stderr, "vector: realloc failed\n");
             free(v->begin);
-            exit(1);
+            ERROR_EXIT("vector: init malloc failedl\n");
         }
         v->begin = tmp;
         v->end = v->begin + (v->size * v->length);
@@ -46,7 +47,7 @@ void vector_insert(vector* v, void* x, int pos)
         return;
 
     void* start = vector_index(v, pos);
-    memmove(start + v->size, start, v->size * (v->length - pos - 1)); // this is broken fix this!!!!!!!
+    memmove(start + v->size, start, v->size * (v->length - pos - 1));
     memcpy(start, x, v->size);
 }
 
@@ -74,10 +75,8 @@ void vector_init(vector* v, int size, size_t cap)
    v->length = 0;
    v->size = size;
    v->begin = malloc(size*cap);
-   if (v->begin == NULL) {
-       fprintf(stderr, "vector: init malloc failedl\n");
-       exit(1);
-   }
+   if (v->begin == NULL)
+       ERROR_EXIT("vector: init malloc failedl\n");
    v->end = v->begin;
    v->cap = v->begin + (size*cap);
 }
