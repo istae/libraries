@@ -6,22 +6,22 @@
 typedef struct vector {
     int size;
     int length;
+    int cap;
     void* begin;
     void* end;
-    void* cap;
 } vector;
 
 void vector_realloc(vector* v)
 {
-    if (v->end == v->cap) {
-        void* tmp = realloc(v->begin, v->size * v->length * 2);
+    if (v->length == v->cap) {
+        v->cap *= 2;
+        void* tmp = realloc(v->begin, v->size * v->cap);
         if (tmp == NULL) {
             free(v->begin);
             ERROR_EXIT("vector: init malloc failedl\n");
         }
         v->begin = tmp;
         v->end = v->begin + (v->size * v->length);
-        v->cap = v->begin + (v->size * v->length * 2);
     }
 }
 
@@ -29,14 +29,14 @@ void vector_realloc(vector* v)
 void vector_push(vector* v, void* x)
 {
     vector_realloc(v);
-    memcpy(v->end, x, v->size);
+    memmove(v->end, x, v->size);
     v->end += v->size;
     v->length++;
 }
 
-void* vector_index(vector* v, int x)
+void* vector_index(vector* v, int pos)
 {
-   return v->begin + x * v->size;
+   return v->begin + pos * v->size;
 }
 
 // 1) vector pointer 2) object to insert, 3) insert position
@@ -47,7 +47,7 @@ void vector_insert(vector* v, void* x, int pos)
         return;
 
     void* start = vector_index(v, pos);
-    memmove(start + v->size, start, v->size * (v->length - pos - 1));
+    memcpy(start + v->size, start, v->size * (v->length - pos - 1));
     memcpy(start, x, v->size);
 }
 
@@ -67,6 +67,7 @@ void vector_dest(vector* v)
    free(v->begin);
 }
 
+// users better give a c
 void vector_init(vector* v, int size, size_t cap)
 {
    if (cap <= 0)
@@ -75,8 +76,7 @@ void vector_init(vector* v, int size, size_t cap)
    v->length = 0;
    v->size = size;
    v->begin = malloc(size*cap);
-   if (v->begin == NULL)
-       ERROR_EXIT("vector: init malloc failedl\n");
+   if (v->begin == NULL) ERROR_EXIT("vector: init malloc failedl\n");
    v->end = v->begin;
-   v->cap = v->begin + (size*cap);
+   v->cap = cap;
 }

@@ -106,7 +106,7 @@ int lower_bound(void* a, const int len, void* m, const int size)
     return b;
 }
 
-int lower_bound_int(int* n, int len, int m)
+int lower_bound_int(int* n, const int len, int m)
 {
     int b = 0;
     int e = len-1;
@@ -131,6 +131,7 @@ int binary_search_int(int* a, const int len, int m)
     return 0;
 }
 
+// broken! memcmp is not a valid function
 int binary_search(void* a, const int len, void* m, const int size)
 {
     int pos = lower_bound(a, len, m, size);
