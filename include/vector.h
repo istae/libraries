@@ -4,11 +4,11 @@
 // ERROR_EXIT is a macro defined in utilities.h
 
 typedef struct vector {
+    void* begin;
+    void* end;
     int size;
     int length;
     int cap;
-    void* begin;
-    void* end;
 } vector;
 
 void vector_realloc(vector* v)
@@ -18,7 +18,7 @@ void vector_realloc(vector* v)
         void* tmp = realloc(v->begin, v->size * v->cap);
         if (tmp == NULL) {
             free(v->begin);
-            ERROR_EXIT("vector: init malloc failedl\n");
+            ERROR_EXIT("vector: realloc failedl\n");
         }
         v->begin = tmp;
         v->end = v->begin + (v->size * v->length);
