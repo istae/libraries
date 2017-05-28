@@ -1,5 +1,8 @@
 #pragma once
+
+/* needs
 #include "utilities.h"
+*/
 
 // ERROR_EXIT is a macro defined in utilities.h
 
@@ -15,12 +18,8 @@ void vector_realloc(vector* v)
 {
     if (v->length == v->cap) {
         v->cap *= 2;
-        void* tmp = realloc(v->begin, v->size * v->cap);
-        if (tmp == NULL) {
-            free(v->begin);
-            ERROR_EXIT("vector: realloc failedl\n");
-        }
-        v->begin = tmp;
+        if (!safe_realloc(&v->begin, v->size * v->cap))
+            error_exit("vector: realloc failedl\n");
         v->end = v->begin + (v->size * v->length);
     }
 }
@@ -76,7 +75,7 @@ void vector_init(vector* v, int size, size_t cap)
    v->length = 0;
    v->size = size;
    v->begin = malloc(size*cap);
-   if (v->begin == NULL) ERROR_EXIT("vector: init malloc failedl\n");
+   if (v->begin == NULL) error_exit("vector: init malloc failedl\n");
    v->end = v->begin;
    v->cap = cap;
 }

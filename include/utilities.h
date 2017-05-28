@@ -1,13 +1,26 @@
-#pragma once
+ #pragma once
+
+// function parameters are evaluated from right to left, rofl who knew
+
+// needs
+#include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
 
-#define ERROR_EXIT(str) do {fprintf(stderr, "%s\n", str); exit(1);} while(0)
+#define ERROR_EXIT(str) do {fprintf(stderr, str); exit(1);} while(0)
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+
+void error_exit(char* str)
+{
+    fprintf(stderr, str);
+    exit(1);
+}
 
 void debug(char* str, ...)
 {
@@ -39,7 +52,7 @@ int b64toa(char* str, char* b64, int len)
         else if (step == 1)
             str[j++] = (value[b64[i++]] << 4) | (value[b64[i]] >> 2);
 
-        else if (step == 2) {
+        else {
             str[j++] = (value[b64[i++]] << 6) | (value[b64[i]]);
             step = -1;
             i++;
@@ -243,7 +256,7 @@ int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
 }
 
 // little endian memmory cmp
-// returns 0 of equal, 1 of a > b. -1 of a < b
+// returns 0 of equal, 1 if a > b. -1 if a < b
 // extern inline
 int litend_memcmp(void* a, void*b, int s)
 {
@@ -311,6 +324,15 @@ int binary_search(void* a, int len, void* m, int size)
         return 0;
 }
 
+int find(void* a, int len, void* m, int size)
+{
+    for (int i=0; i < len; i++) {
+        if (memcmp(a+i*size, m, size)==0)
+            return i;
+    }
+    return -1;
+}
+
 // give this an array of int, and see how bits are organized in memory
 int mem_print(void* a, int len, int size)
 {
@@ -343,4 +365,24 @@ int issorted_int(int* a, int len)
         if (a[i] < a[i-1])
             return 0;
     return 1;
+}
+
+void printBits(size_t size, int skip, void* ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    for (int i=size-1; i>=0; i--)
+    {
+        int j;
+        for(j=7; j>=skip; j--)
+        if ((b[i] >> j) & 1)
+            break;
+
+        for (int k=j; k>=0; k--)
+        {
+            byte = (b[i] >> k) & 1;
+            printf("%u", byte);
+        }
+        printf(" ");
+    }
 }
