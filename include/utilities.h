@@ -9,6 +9,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <time.h>
 
 #define ERROR_EXIT(str) do {fprintf(stderr, str); exit(1);} while(0)
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
@@ -39,7 +40,7 @@ int b64toa(char* str, char* b64, int len)
     char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     int value[128];
     for(int i=0; i < sizeof(base64); i++)
-        value[base64[i]] = i;
+        value[(uint8)base64[i]] = i;
 
     int j = 0;
     int step = 0;
@@ -121,8 +122,9 @@ int _getline(FILE* f, char* b, int max)
 int fset(char* path, void* buffer, int len)
 {
     FILE* f = fopen (path, "wb");
-    if (!f) return 0;
-    fwrite (buffer , 1, len, f);
+    if (!f)
+        return 0;
+    fwrite (buffer, 1, len, f);
     fclose (f);
     return 1;
 }
@@ -257,7 +259,6 @@ int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
 
 // little endian memmory cmp
 // returns 0 of equal, 1 if a > b. -1 if a < b
-// extern inline
 int litend_memcmp(void* a, void*b, int s)
 {
     while(--s >= 0) {
@@ -367,22 +368,56 @@ int issorted_int(int* a, int len)
     return 1;
 }
 
-void printBits(size_t size, int skip, void* ptr)
+void printBits(int num)
 {
-    unsigned char *b = (unsigned char*) ptr;
-    unsigned char byte;
-    for (int i=size-1; i>=0; i--)
-    {
-        int j;
-        for(j=7; j>=skip; j--)
-        if ((b[i] >> j) & 1)
-            break;
-
-        for (int k=j; k>=0; k--)
-        {
-            byte = (b[i] >> k) & 1;
-            printf("%u", byte);
-        }
-        printf(" ");
+    int maxPow = 1 << 15;
+    for(int i=0; i < 16; i++){
+        // print last bit and shift left.
+        printf("%u",num&maxPow ? 1 : 0);
+        num <<= 1;
     }
+
+    /*
+    int i;
+        for(i=(sizeof(int)*8)-1; i>=0; i--)
+            (x&(1u<<i))?putchar('1'):putchar('0');
+
+    	printf("\n");
+        */
+}
+
+enum {
+    TIMER_START,
+    TIMER_FINISH
+};
+
+float timer(int flag)
+{
+    static clock_t start = 0;
+    if (flag == TIMER_FINISH)
+        return (float)(clock() - start) / (CLOCKS_PER_SEC);
+     if (flag == TIMER_START)
+        return (start = clock());
+    return 0;
+}
+
+// starting at bit s, get f bits to the right shifted down to bit 1, while discarding
+// bits outside of the range [s, s-f)
+// ex: 1001101, bits_range(3,2) -> 10
+int bit_range(int val, int s, int f)
+{
+    int ret = (1 << s) - 1;
+    val &= ret;
+    return val >> (s-f);
+}
+
+// starting at bit s, clears f bits to zero to the right of s. range - [s, s-f)
+//ex: 1111, bits_clear(3,2) => 1001
+int bit_clear(int val, int s, int f)
+{
+    int ret = (1 << s) - 1;
+    int b = val & ret;
+    val &= ~ret;
+    val |=  b & ((1 << (s-f)) - 1);
+    return val;
 }
