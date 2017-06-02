@@ -206,17 +206,8 @@ uint8* huffman_decompress(uint8* str, int* len)
         table_size |= str[i++] << (j*8);
     // printf("table size: %d\n", table_size);
 
-
-    int code = str[i++];
-    code |= (str[i++] << 8);
-
-    int max_bit_count = str[i++];
-    i-=3;
-
-    // int max_code = 1 << (max_bit_count+1);
-
-    int rep = 5;
     int max = 50000;
+    int rep = 5;
 
     uint8 bit_count[max][rep];
     uint8 values[max][rep];
@@ -226,6 +217,7 @@ uint8* huffman_decompress(uint8* str, int* len)
     memset(values, 0, max * rep);
     memset(length, 0, max);
 
+    int code = 0;
     for(int j=0; j < table_size; j++) {
 
         code = str[i++];
@@ -235,63 +227,43 @@ uint8* huffman_decompress(uint8* str, int* len)
         bit_count[code][len] = str[i++]; // bit_count
         values[code][len] = str[i++]; //value
         length[code]++;
-
-        // printf("code: %d ", code);
-        // printf("bit_count: %d ", bit_count[code][len]);
-        // printf("Val: %c\n", values[code][len]);
     }
 
     // get fewest_bits
-    int fewest_bits = bit_count[code][length[code]-1];
+    int fewest_bits = bit_count[code][length[code]-1]; //smallest code
 
     // get 8 bytes total-bits
     size_t total_chars=0;
     for(int j=0; j < 8; j++)
         total_chars |= str[i++] << (j*8);
-    // printf("total_chars %llu\n\n", total_chars);
 
     uint8* result = malloc(total_chars + 1);
 
     int bit_pos = 8;
-    int c = str[i++];
+    int b = str[i++];
 
     for(int j=0; j < total_chars; j++) {
 
-        int b = 0, m = 0;
-        int cbc = fewest_bits - 1; // current bit count, offset from bit_pos
+        int c = 0, m = 0;
+        int cbc = fewest_bits - 1; // current bit count, offset from bit_pos [bit_pos, bit_pos-cbs)
 
         do {
             ++cbc;
-            if (bit_pos >= cbc) {
-                b = bit_range(c, bit_pos, cbc);
-                // debug("in bit_pos >= cbc! b: %d, cbc: %d, bit_pos: %d\n", b, cbc, bit_pos);
-            }
-            else if (bit_pos > 0) {
-                b = bit_range(c, bit_pos, bit_pos);
-                c = (b << 8) | str[i++];
-                cbc = fewest_bits - 1;
-                bit_pos += 8;
-                // debug("in bit_pos > 0, b: %d, c: %d, cbc: %d, bit_pos: %d\n", b, c, cbc, bit_pos);
-            }
+            if (bit_pos >= cbc)
+                c = bit_range(b, bit_pos, cbc);
             else {
-                // debug("blah........\n");
-                bit_pos = 8;
-                c = str[i++];
-                cbc = fewest_bits - 1;
-                b = 0;
+                b = ((b & ((1 << bit_pos) - 1)) << 8) | str[i++]; // same as bit_range(b, bit_pos, bit_pos)
+                bit_pos += 8;
+                c = bit_range(b, bit_pos, cbc);
             }
 
-            if (cbc >= fewest_bits)
-                for(m=0; m < length[b] && bit_count[b][m] != cbc; m++)
-                    ;
-            else
-                m = length[b];
+            for(m=0; m < length[c] && bit_count[c][m] != cbc; m++)
+                ;
         }
-        while (m == length[b]);
+        while (m == length[c]);
 
         bit_pos -= cbc;
-        // debug("output %c\n", values[b][m], m, b);
-        result[j] = values[b][m];
+        result[j] = values[c][m];
     }
     result[total_chars] = '\0';
     *len = total_chars;

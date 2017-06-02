@@ -406,8 +406,7 @@ float timer(int flag)
 // ex: 1001101, bits_range(3,2) -> 10
 int bit_range(int val, int s, int f)
 {
-    int ret = (1 << s) - 1;
-    val &= ret;
+    val &= (1 << s) - 1;
     return val >> (s-f);
 }
 
