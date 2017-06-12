@@ -58,8 +58,8 @@ huffman build_huffman_tree(char_freq* cf, int cf_len)
 
     // empty tree in a vector
     for(int i=0; i < cf_len; i++) {
-        huff_node hv = {1, cf[i].freq};
-        vector_push(&tree, &hv);
+        huff_node hn = {1, cf[i].freq};
+        vector_push(&tree, &hn);
     }
 
     // build tree and insert sums in correct positions, -1 flag for sums
@@ -113,9 +113,7 @@ uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_l
     for(int i=0; i < cflen; i++)
         dict[cf[i].value] = h.codes[i];
 
-    // printf("cflen: %d, h.total_chars %d, h.codes[0].bit_count %d\n", cflen,h.total_chars,h.codes[0].bit_count);
-    size_t malloc_size = (cflen * 4) + (h.total_chars * h.codes[0].bit_count) + 10;
-    uint8* fstr = malloc(malloc_size);
+    uint8* fstr = malloc((cflen * 4) + (h.total_chars * h.codes[0].bit_count) + 10);
 
     int i = 0;
 
@@ -135,60 +133,45 @@ uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_l
 
     // bit count, little endian, 8 bytes
     for(int j=0; j < 8; j++)
-        fstr[i++] = (h.total_chars >> (8*j)) & 0x0FF;
+        fstr[i++] = (h.total_chars >> (8*j)) & 0xFF;
 
-    // convertion
-    int byte_count = 0;
     int bit_pos = 8;
     int b = 0;
 
     for(int j=0; j < str_len; j++) {
 
-        int c = *str++;
-        huff_code hc = dict[c];
+        huff_code hc = dict[*str++];
         int bit_count = hc.bit_count;
         int code = hc.code;
 
-        int avail = bit_pos - bit_count;
-
         // current byte has enough available bits for code bits to fit
-        if (avail >= 0) {
-            b |= code << avail;
-            // debug("c: %d, b:  %d in avail >= 0\n", code, b);
+        if (bit_pos > bit_count) {
             bit_pos -= bit_count;
-            if (bit_pos == 0) {
-
-                fstr[i++] = b;
-                byte_count++;
-                // debug("wrote when avail >= 0: %d\n", fstr[i-1]);
-                bit_pos = 8;
-                b = 0;
+            b |= code << bit_pos;
+        }
+        // current byte does not have enough room so keep writing bytes until bit_count is less than 1 byte
+        else  {
+            bit_count -= bit_pos;
+            b |= code >> bit_count;
+            fstr[i++] = b;
+            while (bit_count >= 8) {
+                bit_count -= 8;
+                fstr[i++] = code >> bit_count;
             }
+            b = code << (8 - bit_count);
+            bit_pos = 8 -  bit_count;
         }
 
-        // byte does not have enough room so fit in as many as bits from code as possible
-        else  {
-            do {
-                b |= code >> (bit_count - bit_pos);
-                // debug("shifted: %d, in bit pos > 0\n", bit_count - bit_pos);
-                fstr[i++] = b;
-                bit_count -= bit_pos;
-                bit_pos = 8;
-                // debug("c: %c, b: %d in bit_pos > 0\n", c, b);
-                // debug("wrote when bit_pos > 0: %d\n", fstr[i-1]);
-                b = 0;
-                byte_count++;
-            }
-            while (bit_count >= bit_pos);
-            b |= code << (bit_pos - bit_count);
-            bit_pos -= bit_count;
+        // check if end of byte is reached, if yes, write then reset
+        if (bit_pos == 0) {
+            fstr[i++] = b;
+            bit_pos = 8;
+            b = 0;
         }
     }
 
     if (bit_pos != 8) {
         fstr[i++] = b;
-        byte_count++;
-        // debug("wrote when bit_pos != 8: %d\n", fstr[i-1]);
     }
 
     fstr[i] = '\0';
@@ -206,16 +189,16 @@ uint8* huffman_decompress(uint8* str, int* len)
         table_size |= str[i++] << (j*8);
     // printf("table size: %d\n", table_size);
 
-    int max = 50000;
-    int rep = 5;
+    #define MAX 50000
+    #define REP 5
 
-    uint8 bit_count[max][rep];
-    uint8 values[max][rep];
-    uint8 length[max];
+    uint8 bit_count[MAX][REP] = {0};
+    uint8 values[MAX][REP] = {0};
+    uint8 length[MAX] = {0};
 
-    memset(bit_count, 0, max * rep);
-    memset(values, 0, max * rep);
-    memset(length, 0, max);
+    // memset(bit_count, 0, max * rep);
+    // memset(values, 0, max * rep);
+    // memset(length, 0, max);
 
     int code = 0;
     for(int j=0; j < table_size; j++) {
@@ -224,13 +207,13 @@ uint8* huffman_decompress(uint8* str, int* len)
         code |= (str[i++] << 8); // code
         int len = length[code];
 
-        bit_count[code][len] = str[i++]; // bit_count
-        values[code][len] = str[i++]; //value
+        bit_count[code][len] = str[i++];
+        values[code][len] = str[i++];
         length[code]++;
     }
 
     // get fewest_bits
-    int fewest_bits = bit_count[code][length[code]-1]; //smallest code
+    int fewest_bits = bit_count[code][length[code]-1]; //smallest code by bit count
 
     // get 8 bytes total-bits
     size_t total_chars=0;
@@ -244,27 +227,29 @@ uint8* huffman_decompress(uint8* str, int* len)
 
     for(int j=0; j < total_chars; j++) {
 
-        int c = 0, m = 0;
-        int cbc = fewest_bits - 1; // current bit count, offset from bit_pos [bit_pos, bit_pos-cbs)
+        int c = 0, m;
+        int cbc = fewest_bits; // CurrentBitCount
 
         do {
-            ++cbc;
             if (bit_pos >= cbc)
-                c = bit_range(b, bit_pos, cbc);
+                c = b >> (bit_pos - cbc);
             else {
-                b = ((b & ((1 << bit_pos) - 1)) << 8) | str[i++]; // same as bit_range(b, bit_pos, bit_pos)
+                b = (b << 8) | str[i++];
                 bit_pos += 8;
-                c = bit_range(b, bit_pos, cbc);
+                c = b >> (bit_pos - cbc);
             }
 
             for(m=0; m < length[c] && bit_count[c][m] != cbc; m++)
                 ;
+            ++cbc;
         }
         while (m == length[c]);
 
-        bit_pos -= cbc;
+        bit_pos -= (cbc-1);
+        b &= (1 << bit_pos) - 1; // clear out bits left of bit_pos
         result[j] = values[c][m];
     }
+
     result[total_chars] = '\0';
     *len = total_chars;
     return result;
@@ -280,39 +265,3 @@ uint8* huffman_compress(uint8* str, int str_len, int* compress_len)
     free(h.codes);
     return ret;
 }
-
-// for(int j=0; j < total_chars; j++) {
-//
-//     int b = 0, m = 0;
-//     int cbc = max_bit_count + 1; // current bit count, offset from bit_pos
-//
-//     do {
-//         --cbc;
-//         if (bit_pos >= cbc) {
-//             b = bit_range(c, bit_pos, cbc);
-//             debug("in bit_pos >= cbc! b: %d, cbc: %d, bit_pos: %d\n", b, cbc, bit_pos);
-//         }
-//         else if (bit_pos > 0) {
-//             b = bit_range(c, bit_pos, bit_pos);
-//             c = (b << 8) | str[i++];
-//             cbc = max_bit_count + 1;
-//             bit_pos += 8;
-//             debug("in bit_pos > 0, b: %d, c: %d, cbc: %d, bit_pos: %d\n", b, c, cbc, bit_pos);
-//         }
-//         else {
-//             debug("blah........\n");
-//             bit_pos = 8;
-//             c = str[i++];
-//             cbc = max_bit_count + 1;
-//             b = 0;
-//         }
-//
-//         if (b < max)
-//             for(m=0; m < length[b] && bit_count[b][m] != cbc; m++)
-//                 ;
-//         else {
-//             b = 0;
-//             m =  length[b] + 1;
-//         }
-//     }
-//     while (m == length[b]);

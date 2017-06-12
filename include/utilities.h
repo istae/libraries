@@ -1,6 +1,9 @@
  #pragma once
 
 // function parameters are evaluated from right to left, rofl who knew
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // needs
 #include <stdio.h>
@@ -395,7 +398,7 @@ float timer(int flag)
 {
     static clock_t start = 0;
     if (flag == TIMER_FINISH)
-        return (float)(clock() - start) / (CLOCKS_PER_SEC);
+        return (float)(clock() - start) / CLOCKS_PER_SEC;
      if (flag == TIMER_START)
         return (start = clock());
     return 0;
@@ -420,3 +423,7 @@ int bit_clear(int val, int s, int f)
     val |=  b & ((1 << (s-f)) - 1);
     return val;
 }
+
+#ifdef __cplusplus
+}
+#endif
