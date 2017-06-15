@@ -122,35 +122,6 @@ int _getline(FILE* f, char* b, int max)
     return i;
 }
 
-int fset(char* path, void* buffer, int len)
-{
-    FILE* f = fopen (path, "wb");
-    if (!f)
-        return 0;
-    fwrite (buffer, 1, len, f);
-    fclose (f);
-    return 1;
-}
-
-char* fget(char* path, int* len)
-{
-    char* buffer = NULL;
-    FILE *f = fopen (path, "rb");
-    if (f) {
-        fseek (f, 0, SEEK_END);
-        int length = ftell(f);
-        fseek (f, 0, SEEK_SET);
-        buffer = malloc(length+1); // + '\0'
-        if (buffer != NULL) {
-            fread (buffer, 1, length, f);
-            buffer[length] = '\0';
-            *len = length;
-        }
-        fclose (f);
-    }
-    return buffer;
-}
-
 // not lazy realloc
 int safe_realloc(void** p, int size)
 {

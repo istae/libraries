@@ -1,9 +1,32 @@
 #pragma once
 
-/* needs
-#include "utilities.h"
-*/
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wpointer-arith"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <utilities.h>
+#include <stdlib.h>
+#include <string.h>
+
+void error_exit(char* str)
+{
+    fprintf(stderr, str);
+    exit(1);
+}
+
+int safe_realloc(void** p, int size)
+{
+    void* t = realloc(*p, size);
+    if (t) {
+        *p = t;
+        return 1;
+    }
+    free(*p);
+    return 0;
+}
 // ERROR_EXIT is a macro defined in utilities.h
 
 typedef struct vector {
@@ -56,7 +79,7 @@ void vector_insert_int(vector* v,int x, int pos)
     if (pos >= v->length)
         return;
 
-    int* start = vector_index(v, pos);
+    int* start = (int*)vector_index(v, pos);
     memcpy(start+1, start, (v->length - pos - 1)*sizeof(int));
     memcpy(start, &x, v->size);
 }
@@ -79,3 +102,7 @@ void vector_init(vector* v, int size, size_t cap)
    v->end = v->begin;
    v->cap = cap;
 }
+
+#ifdef __cplusplus
+}
+#endif
