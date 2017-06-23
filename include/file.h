@@ -1,4 +1,8 @@
 #pragma once
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+/*
+C ONLY
+*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,11 +13,14 @@ extern "C" {
 #include <sys/stat.h>
 #include <dirent.h>
 
-int isdir(const char* fname)
+int isdir(const char* path)
 {
-    struct stat st;
-    stat(fname, &st); // error check laer
-    return ((st.st_mode & S_IFMT) == S_IFDIR);
+    // struct stat st;
+    // stat(fname, &st); // error check laer
+    // return ((st.st_mode & S_IFMT) == S_IFDIR);
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISDIR(path_stat.st_mode);
 }
 
 int fset(char* path, void* buffer, int len)
@@ -45,7 +52,7 @@ char* fget(char* path, int* len)
     return buffer;
 }
 
-int fcat(char* f1, char* f2)
+int fcpy(char* f1, char* f2)
 {
     int len;
     char* b = fget(f2, &len);

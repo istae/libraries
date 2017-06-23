@@ -11,39 +11,19 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-void error_exit(char* str)
-{
-    fprintf(stderr, str);
-    exit(1);
-}
-
-int safe_realloc(void** p, int size)
-{
-    void* t = realloc(*p, size);
-    if (t) {
-        *p = t;
-        return 1;
-    }
-    free(*p);
-    return 0;
-}
-// ERROR_EXIT is a macro defined in utilities.h
-
 typedef struct vector {
     void* begin;
-    void* end;
     int size;
     int length;
     int cap;
 } vector;
 
-void vector_realloc(vector* v)
+void  vector_realloc(vector* v)
 {
     if (v->length == v->cap) {
         v->cap *= 2;
-        if (!safe_realloc(&v->begin, v->size * v->cap))
-            error_exit("vector: realloc failedl\n");
-        v->end = v->begin + (v->size * v->length);
+        if (!safe_realloc(&v->begin, v->cap * v->size))
+            error_exit("vector: realloc failed after %.2lf mb !", (double)v->cap * v->size / 1024 / 1024 );
     }
 }
 
@@ -51,8 +31,7 @@ void vector_realloc(vector* v)
 void vector_push(vector* v, void* x)
 {
     vector_realloc(v);
-    memmove(v->end, x, v->size);
-    v->end += v->size;
+    memcpy(v->begin + (v->size * v->length), x, v->size);
     v->length++;
 }
 
@@ -84,7 +63,7 @@ void vector_insert_int(vector* v,int x, int pos)
     memcpy(start, &x, v->size);
 }
 
-void vector_dest(vector* v)
+void vector_free(vector* v)
 {
    free(v->begin);
 }
@@ -99,7 +78,6 @@ void vector_init(vector* v, int size, size_t cap)
    v->size = size;
    v->begin = malloc(size*cap);
    if (v->begin == NULL) error_exit("vector: init malloc failedl\n");
-   v->end = v->begin;
    v->cap = cap;
 }
 

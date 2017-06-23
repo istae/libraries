@@ -1,4 +1,7 @@
- #pragma once
+#pragma once
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+#pragma GCC diagnostic ignored "-Wchar-subscripts"
+#pragma GCC diagnostic ignored "-Wsequence-point"
 
 // function parameters are evaluated from right to left, rofl who knew
 #ifdef __cplusplus
@@ -20,9 +23,12 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 
-void error_exit(char* str)
+void error_exit(char* str, ...)
 {
-    fprintf(stderr, str);
+    va_list args;
+    va_start(args, str);
+    vfprintf(stderr, str, args);
+    va_end(args);
     exit(1);
 }
 
@@ -32,15 +38,26 @@ void debug(char* str, ...)
         #if DEBUG
         va_list args;
         va_start(args, str);
-        vprintf(str, args);
+        vfprintf(stderr, str, args);
         va_end(args);
         #endif
     #endif
 }
 
+int safe_realloc(void** p, int size)
+{
+    void* t = realloc(*p, size);
+    if (t) {
+        *p = t;
+        return 1;
+    }
+    free(*p);
+    return 0;
+}
+
 int b64toa(char* str, char* b64, int len)
 {
-    char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    unsigned char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     int value[128];
     for(int i=0; i < sizeof(base64); i++)
         value[(uint8)base64[i]] = i;
@@ -123,16 +140,6 @@ int _getline(FILE* f, char* b, int max)
 }
 
 // not lazy realloc
-int safe_realloc(void** p, int size)
-{
-    void* t = realloc(*p, size);
-    if (t) {
-        *p = t;
-        return 1;
-    }
-    free(*p);
-    return 0;
-}
 
 //  MODIFIES STR!
 // split words, ends at eof or \n
@@ -162,7 +169,7 @@ char** split(char* str, int* count)
     int c=0;
 
     int size = 1;
-    char** lines = malloc(sizeof(char*));
+    char** lines = (char**)malloc(sizeof(char*));
 
     for(int i=0; str[i] != '\0'; i++) {
 
@@ -178,7 +185,7 @@ char** split(char* str, int* count)
             // realloc
             if (c == size) {
                 size *= 2;
-                if (!safe_realloc((void*)&lines, sizeof(char*) * size)) { // (void*) because gcc keeps crying about it
+                if (!safe_realloc((void**)&lines, sizeof(char*) * size)) { // (void*) because gcc keeps crying about it
                     return NULL;
                 }
             }
@@ -204,7 +211,7 @@ void freelist(int len, ...)
 void _p_swap(void* a, void* b, const size_t size)
 {
     //swap byte at a time
-    unsigned char *p = a, *q = b, tmp;
+    uint8* p = (uint8*)a, *q = (uint8*)b, tmp;
     for (size_t i = 0; i != size; ++i) {
         tmp = p[i];
         p[i] = q[i];
@@ -236,8 +243,8 @@ int partition(void* a, size_t len, const size_t size, int (*cmp)(void*))
 int litend_memcmp(void* a, void*b, int s)
 {
     while(--s >= 0) {
-        uint8* x = a + s;
-        uint8* y = b + s;
+        uint8* x = (uint8*)a + s;
+        uint8* y = (uint8*)b + s;
         if (*x > *y)
             return 1;
         else if (*x < *y)
@@ -312,8 +319,8 @@ int find(void* a, int len, void* m, int size)
 int mem_print(void* a, int len, int size)
 {
     for (int i=1; i < len; i++) {
-        uint8* x = a + ((i - 1) * size);
-        uint8* y = a + (i * size);
+        uint8* x = (uint8*)a + ((i - 1) * size);
+        uint8* y = (uint8*)a + (i * size);
         printf("%d %d\n", *(int*)(a + ((i - 1) * size)), *(int*)(a + (i * size)));
         printf("----------------\n");
         for (int j=size-1; j >= 0; j--) {
@@ -360,24 +367,41 @@ void printBits(int num)
         */
 }
 
+// TIMER API
 enum {
     TIMER_START,
-    TIMER_FINISH
+    TIMER_FINISH,
+    SECONDS,
+    MILLISECONDS,
+    NANOSECONDS
 };
 
-float timer(int flag)
+double timer(int flag)
 {
-    static clock_t start = 0;
-    if (flag == TIMER_FINISH)
-        return (float)(clock() - start) / CLOCKS_PER_SEC;
-     if (flag == TIMER_START)
-        return (start = clock());
+    static double timer_resolution = 1.0;
+    static struct timespec start_time;
+
+    if (flag == TIMER_START)
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+    else if (flag == TIMER_FINISH) {
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        return (((double)end_time.tv_sec + 1.0e-9*end_time.tv_nsec) - ((double)start_time.tv_sec + 1.0e-9*start_time.tv_nsec)) * timer_resolution;
+    }
+    else if (flag == SECONDS)
+        timer_resolution =  1.0;
+    else if (flag == MILLISECONDS)
+        timer_resolution =  1.0e3;
+    else if (flag == NANOSECONDS)
+        timer_resolution = 1.0e9;
+
     return 0;
 }
 
 // starting at bit s, get f bits to the right shifted down to bit 1, while discarding
 // bits outside of the range [s, s-f)
 // ex: 1001101, bits_range(3,2) -> 10
+// #define BIT_RANGE(val, s, f) (((val) &= (1 << (s)) - 1) >> ((s) - (f)))
 int bit_range(int val, int s, int f)
 {
     val &= (1 << s) - 1;

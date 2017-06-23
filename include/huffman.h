@@ -101,7 +101,7 @@ huffman build_huffman_tree(char_freq* cf, int cf_len)
         }
     }
 
-    vector_dest(&tree);
+    vector_free(&tree);
     return (huffman){total_chars, codes};
 }
 
@@ -118,8 +118,7 @@ uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_l
     int i = 0;
 
     //table size
-    for(int k=0; k < 2; k++)
-        fstr[i++] = (cflen >> (8*k)) & 0x0FF;
+    fstr[i++] = cflen & 255;
 
     // table
     for(int j=0; j < cflen; j++) {
@@ -184,9 +183,9 @@ uint8* huffman_decompress(uint8* str, int* len)
     // getting tablee
     int i = 0;
 
-    int table_size = 0;
-    for(int j=0; j < 2; j++)
-        table_size |= str[i++] << (j*8);
+    int table_size = str[i++];
+    if (table_size == 0)
+        table_size = 256;
     // printf("table size: %d\n", table_size);
 
     #define MAX 50000
