@@ -23,6 +23,50 @@ int isdir(const char* path)
     return S_ISDIR(path_stat.st_mode);
 }
 
+enum {
+    FILES_ONLY,
+    DIRS_ONLY,
+    FILES_AND_DIRS,
+    MAX_FILE_PATHS = 256,
+    MAX_FILE_NAME = 256,
+};
+
+//expects an 2d array with MAX_FILE_NAME length rows
+int dirlist(const char* dir, int flg, char dlist[][MAX_FILE_PATHS])
+{
+    // MAX_PATH  = 255
+    DIR* dfd = opendir(dir);
+    if (dfd == NULL) {
+        fprintf(stderr, "cannot access %s\n", dir);
+        exit(1);
+    }
+
+    struct dirent* dp;
+    int i = 0;
+
+    while ((dp = readdir(dfd)) != NULL ) {
+        if (strcmp(dp->d_name, ".") == 0)
+            continue;
+        if (flg == FILES_AND_DIRS)
+            strcpy(dlist[i++], dp->d_name);
+        else {
+
+            char path[1000];
+            sprintf(path, "%s/%s", dir, dp->d_name);
+
+            int is = isdir(path);
+
+            if (flg == FILES_ONLY && (!is))
+                strcpy(dlist[i++], dp->d_name);
+
+                else if (flg == DIRS_ONLY && is)
+                strcpy(dlist[i++], dp->d_name);
+        }
+    }
+    closedir(dfd);
+    return i;
+}
+
 int fset(char* path, void* buffer, int len)
 {
     FILE* f = fopen(path, "wb");

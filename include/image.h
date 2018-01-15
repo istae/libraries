@@ -14,6 +14,7 @@
 #endif
 
 typedef uint8_t uint8;
+typedef uint32_t uint32;
 
 #define RGBA 4
 

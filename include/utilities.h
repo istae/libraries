@@ -19,6 +19,7 @@ extern "C" {
 
 #define ERROR_EXIT(str) do {fprintf(stderr, str); exit(1);} while(0)
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
@@ -185,7 +186,7 @@ char** split(char* str, int* count)
             // realloc
             if (c == size) {
                 size *= 2;
-                if (!safe_realloc((void**)&lines, sizeof(char*) * size)) { // (void*) because gcc keeps crying about it
+                if (!safe_realloc((void**)&lines, sizeof(char*) * size)) { 
                     return NULL;
                 }
             }
