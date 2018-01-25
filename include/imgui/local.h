@@ -13,8 +13,8 @@ void texture_image(Image* img)
     glGenTextures(1, &img->texture);
     glBindTexture(GL_TEXTURE_2D, img->texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->width, img->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img->pixels);
-    // glGenerateMipmap(GL_TEXTURE_2D);
-    glGenerateTextureMipmap(img->texture);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    // glGenerateTextureMipmap(img->texture);
     img->texture_loaded = 1;
 }
 

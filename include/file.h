@@ -32,7 +32,7 @@ enum {
 };
 
 //expects an 2d array with MAX_FILE_NAME length rows
-int dirlist(const char* dir, int flg, char dlist[][MAX_FILE_PATHS])
+int dirlist(const char* dir, int flg, char dlist[][MAX_FILE_NAME])
 {
     // MAX_PATH  = 255
     DIR* dfd = opendir(dir);
@@ -45,7 +45,7 @@ int dirlist(const char* dir, int flg, char dlist[][MAX_FILE_PATHS])
     int i = 0;
 
     while ((dp = readdir(dfd)) != NULL ) {
-        if (strcmp(dp->d_name, ".") == 0)
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
             continue;
         if (flg == FILES_AND_DIRS)
             strcpy(dlist[i++], dp->d_name);
@@ -67,7 +67,7 @@ int dirlist(const char* dir, int flg, char dlist[][MAX_FILE_PATHS])
     return i;
 }
 
-int fset(char* path, void* buffer, int len)
+int fset(const char* path, void* buffer, int len)
 {
     FILE* f = fopen(path, "wb");
     if (!f)
@@ -77,7 +77,7 @@ int fset(char* path, void* buffer, int len)
     return 1;
 }
 
-char* fget(char* path, int* len)
+char* fget(const char* path, int* len)
 {
     char* buffer = NULL;
     FILE *f = fopen (path, "rb");
