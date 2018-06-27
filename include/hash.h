@@ -9,6 +9,9 @@
 
 unsigned int strhash(const char *str)
 {
+	#define FNV32_BASE ((unsigned int) 0x811c9dc5)
+	#define FNV32_PRIME ((unsigned int) 0x01000193)
+
 	unsigned int c, hash = FNV32_BASE;
 	while ((c = (unsigned char) *str++))
 		hash = (hash * FNV32_PRIME) ^ c;

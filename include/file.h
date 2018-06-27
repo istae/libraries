@@ -12,6 +12,9 @@ extern "C" {
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <stdint.h>
+
+typedef uint8_t uint8 ;
 
 int isdir(const char* path)
 {

@@ -403,6 +403,9 @@ double timer(int flag)
 // bits outside of the range [s, s-f)
 // ex: 1001101, bits_range(3,2) -> 10
 // #define BIT_RANGE(val, s, f) (((val) &= (1 << (s)) - 1) >> ((s) - (f)))
+
+#define BIT_RANGE(val, s, f) (((val) &= (1 << (s)) - 1) >> ((s) - (f)))
+
 int bit_range(int val, int s, int f)
 {
     val &= (1 << s) - 1;

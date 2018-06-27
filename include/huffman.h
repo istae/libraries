@@ -1,147 +1,145 @@
 #pragma once
 #include <math.h>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <iostream>
+#include <queue>
 
-/* needs
-#include "vector.h"
-*/
+// build_huffman_tree code from http://cs.umw.edu/~finlayson/class/spring17/cpsc340/samples/huffman/huffman.cpp
 
-// used before huffman to measure frequencies
-typedef struct char_freq {
-    int freq;
-    uint8 value;
-} char_freq;
+struct huff_node {
+    huff_node* left = nullptr;
+    huff_node* right = nullptr;
+    unsigned int code = 0;
+    int bit_count = 0;
+    int freq = 0;
+    int value = 0; // 0 - 255 for byte, -1 for sum node
+};
 
-typedef struct huff_code {
-    uint16 code;
-    uint8 bit_count;
-} huff_code;
+struct dictionary {
+    int code = 0;
+    int bit_count = 0;
+    int value = 0;
+};
 
-typedef struct huffman {
-    size_t total_chars;
-    huff_code* codes;
-} huffman;
+struct nodes_comp {
+    bool operator()(huff_node*& a, huff_node*& b) const {
+        return a->freq > b->freq;
+    }
+};
 
-int __char_frequency_sort_comp(const void* a, const void* b)
+std::vector<huff_node> byte_frequency(uint8* str, int str_len)
 {
-    return ((char_freq*)a)->freq - ((char_freq*)b)->freq;
-}
-
-char_freq* char_frequency(uint8* str, int str_len, char_freq* cf, int* cf_len)
-{
+    std::vector<huff_node> bf(256);
     for (int i=0; i < str_len; i++) {
-        cf[(uint8)str[i]].value = str[i];
-        cf[(uint8)str[i]].freq++;
+        bf[(uint8)str[i]].value = str[i];
+        bf[(uint8)str[i]].freq++;
     }
-
     // sort the frequency of bytes from low to high
-    qsort(cf, 256, sizeof(char_freq), __char_frequency_sort_comp);
-
-    // return the first non zero frequency byte index
-    int i;
-    for(i=0; i < 256 && cf[i].freq == 0; i++)
-        ;
-    *cf_len = 256 - i;
-    return i + cf;
+    std::sort(bf.begin(), bf.end(), [](const huff_node & a, const huff_node & b) -> bool {return a.freq < b.freq;});
+    return bf;
 }
 
-huffman build_huffman_tree(char_freq* cf, int cf_len)
+void assign_code(huff_node* node, int code, int bit_count) {
+
+    if(node == nullptr) 
+        return;
+
+    // not sum node
+    if(node->value != -1) {
+        node->code = code;
+        node->bit_count = bit_count;
+    }
+
+    if (bit_count > 31) {
+        std::cout << "ERROR: data cannot be compressed since huffman tree has exceeded depth 16";
+        exit(1);
+    }
+
+    int left_code = (code << 1);
+    int right_code = (code << 1) | 1;
+
+    // traverse the tree and assign left branches code + 0, and right branches code + 1
+    assign_code(node->left, left_code, bit_count+1);
+    assign_code(node->right, right_code, bit_count+1);
+}
+
+void build_huffman_tree(std::vector<huff_node>& hn)
 {
-    // only used in tree construction, internal
-    typedef struct {
-        char flag; // flag = 0 for sum, 1 for actual char
-        int freq;
-        int parent;
-    } huff_node;
+    // ascending priority_queue
+    std::priority_queue<huff_node*, std::vector<huff_node*>, nodes_comp> nodes;  
 
-    vector tree; vector_init(&tree, sizeof(huff_node), cf_len*2);
-    huff_code* codes = malloc(cf_len*sizeof(huff_code)+1);
+    for (int i=0; i < hn.size(); i++)
+        nodes.push((huff_node*)&hn[i]);
 
-    // empty tree in a vector
-    for(int i=0; i < cf_len; i++) {
-        huff_node hn = {1, cf[i].freq};
-        vector_push(&tree, &hn);
+    // create node connections
+    while(nodes.size() > 1) {
+        huff_node* a = nodes.top();
+        nodes.pop();
+        huff_node* b = nodes.top();
+        nodes.pop();
+
+        huff_node* sum_node = new huff_node;
+        sum_node->value = -1; // sum now
+        sum_node->freq = a->freq + b->freq;
+        sum_node->left = a;
+        sum_node->right = b;
+        nodes.push(sum_node);
     }
 
-    // build tree and insert sums in correct positions, -1 flag for sums
-    for(int i=0; i < tree.length-1; i++) {
+    huff_node* root = nodes.top();
 
-        huff_node* hn1 = vector_index(&tree, i++);
-        huff_node* hn2 = vector_index(&tree, i);
-        int sum = hn1->freq + hn2->freq;
-
-        int pos = i+1;
-        huff_node* hv = tree.begin;
-        while(pos < tree.length && sum >= hv[pos].freq)
-            pos++;
-
-        hn1->parent = pos;
-        hn2->parent = pos;
-
-        huff_node hn = {0, sum};
-        vector_insert(&tree, &hn, pos);
-    }
-
-    // get huffman code
-    huff_node* hn = tree.begin;
-    size_t total_chars = 0;
-    int j = 0;
-    int ROOT = tree.length-1;
-    for(int i=0; i < ROOT; i++) {
-        if(hn[i].flag) {
-            int index = i;
-            int shift = 0;
-            int code = 0;
-            total_chars += hn[index].freq;
-            do
-                code |= ((index % 2) << shift++);
-            while((index = hn[index].parent) != ROOT);
-            codes[j].code = code;
-            codes[j].bit_count = shift;
-            ++j;
-        }
-    }
-
-    vector_free(&tree);
-    return (huffman){total_chars, codes};
+    assign_code(root, 0, 0);
 }
 
 // len=# of unique charcter
-uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_len, int* cmp_len)
+std::vector<uint8> huffman_cmpres(uint8* str, int str_len, const std::vector<huff_node>& hn)
 {
-    // main dictionary used to transorm char in str to code in h.codes
-    huff_code dict[256];
-    for(int i=0; i < cflen; i++)
-        dict[cf[i].value] = h.codes[i];
-
-    uint8* fstr = malloc((cflen * 4) + (h.total_chars * h.codes[0].bit_count) + 10);
-
-    int i = 0;
-
-    //table size
-    fstr[i++] = cflen & 255;
-
-    // table
-    for(int j=0; j < cflen; j++) {
-
-        for(int k=0; k < 2; k++)
-            fstr[i++] = (h.codes[j].code >> (8*k)) & 0x0FF;
-
-        fstr[i++] = h.codes[j].bit_count;
-        fstr[i++] = cf[j].value;
+    // main dictionary that holds the byte value, huffman code bit count and huffman code
+    dictionary dict[256];
+    for(int i=0; i < hn.size(); i++) {
+        dict[hn[i].value].bit_count = hn[i].bit_count;
+        dict[hn[i].value].code = hn[i].code;
     }
 
-    // bit count, little endian, 8 bytes
-    for(int j=0; j < 8; j++)
-        fstr[i++] = (h.total_chars >> (8*j)) & 0xFF;
+    std::vector<uint8> cstr; //compressed string
+    cstr.reserve(str_len);
+
+    //magic code
+    cstr.push_back('H');
+    cstr.push_back('U');
+    cstr.push_back('F');
+    cstr.push_back('F');
+    
+    //table size
+    cstr.push_back(hn.size()); // if size == 256, then 0 is recorded
+
+    // table
+    for(int j=0; j < hn.size(); j++) {
+        cstr.push_back(hn[j].code >> 16);
+        cstr.push_back(hn[j].code >> 8);
+        cstr.push_back(hn[j].code);
+
+        cstr.push_back(hn[j].bit_count);
+        cstr.push_back(hn[j].value);
+    }
+
+    //record file size, 4 bytes
+    cstr.push_back(str_len >> 24);
+    cstr.push_back(str_len >> 16);
+    cstr.push_back(str_len >> 8);
+    cstr.push_back(str_len);
 
     int bit_pos = 8;
     int b = 0;
 
+    //packing codes into bytes and storing the bytes in the vector 
     for(int j=0; j < str_len; j++) {
 
-        huff_code hc = dict[*str++];
-        int bit_count = hc.bit_count;
-        int code = hc.code;
+        dictionary d = dict[*str++];
+        int bit_count = d.bit_count;
+        int code = d.code;
 
         // current byte has enough available bits for code bits to fit
         if (bit_pos > bit_count) {
@@ -152,10 +150,10 @@ uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_l
         else  {
             bit_count -= bit_pos;
             b |= code >> bit_count;
-            fstr[i++] = b;
+            cstr.push_back(b);
             while (bit_count >= 8) {
                 bit_count -= 8;
-                fstr[i++] = code >> bit_count;
+                cstr.push_back(code >> bit_count);
             }
             b = code << (8 - bit_count);
             bit_pos = 8 -  bit_count;
@@ -163,70 +161,62 @@ uint8* huffman_cmpres(huffman h, char_freq* cf, int cflen, uint8* str, int str_l
 
         // check if end of byte is reached, if yes, write then reset
         if (bit_pos == 0) {
-            fstr[i++] = b;
+            cstr.push_back(b);
             bit_pos = 8;
             b = 0;
         }
     }
 
     if (bit_pos != 8) {
-        fstr[i++] = b;
+        cstr.push_back(b);
     }
 
-    fstr[i] = '\0';
-    *cmp_len = i;
-    return fstr;
+    return cstr;
 }
 
-uint8* huffman_decompress(uint8* str, int* len)
+std::vector<uint8> huffman_decompress(uint8* str, int len)
 {
-    // getting tablee
     int i = 0;
 
+    std::string magic((char*)str, 4); // first 4 characters must be HUFF
+    if (magic != "HUFF") {
+        std::cout << "ERROR: file is not a HUFF file";
+        exit(1);
+    }
+    i+=4;
+
+    // getting tablee
     int table_size = str[i++];
     if (table_size == 0)
         table_size = 256;
     // printf("table size: %d\n", table_size);
 
-    #define MAX 50000
-    #define REP 5
-
-    uint8 bit_count[MAX][REP] = {0};
-    uint8 values[MAX][REP] = {0};
-    uint8 length[MAX] = {0};
-
-    // memset(bit_count, 0, max * rep);
-    // memset(values, 0, max * rep);
-    // memset(length, 0, max);
-
-    int code = 0;
+    dictionary dict[table_size];
     for(int j=0; j < table_size; j++) {
-
-        code = str[i++];
-        code |= (str[i++] << 8); // code
-        int len = length[code];
-
-        bit_count[code][len] = str[i++];
-        values[code][len] = str[i++];
-        length[code]++;
+        int code = (str[i] << 16) | (str[i+1] << 8) | str[i+2];
+        i += 3;
+        dict[j].code = code;
+        dict[j].bit_count = str[i++];
+        dict[j].value = str[i++];
     }
 
+    int decompressed_len = (str[i] << 24) | (str[i+1] << 16) | (str[i+2] << 8) | str[i+3];
+    i+=4; 
+
     // get fewest_bits
-    int fewest_bits = bit_count[code][length[code]-1]; //smallest code by bit count
+    int fewest_bits = dict[table_size-1].bit_count;
 
     // get 8 bytes total-bits
-    size_t total_chars=0;
-    for(int j=0; j < 8; j++)
-        total_chars |= str[i++] << (j*8);
-
-    uint8* result = malloc(total_chars + 1);
+    std::vector<uint8> dstr; //decompressed file
+    dstr.reserve(len * 2); // reserve some memory, not exact
 
     int bit_pos = 8;
     int b = str[i++];
+    int val;
 
-    for(int j=0; j < total_chars; j++) {
+    for(int j=0; j < decompressed_len; j++) {
 
-        int c = 0, m;
+        int c = 0, next = 0;
         int cbc = fewest_bits; // CurrentBitCount
 
         do {
@@ -237,30 +227,40 @@ uint8* huffman_decompress(uint8* str, int* len)
                 bit_pos += 8;
                 c = b >> (bit_pos - cbc);
             }
-
-            for(m=0; m < length[c] && bit_count[c][m] != cbc; m++)
-                ;
+            
+            // search dict for code and bit_count match
+            for (int j=0; j < table_size; j++) {
+                if (dict[j].bit_count == cbc && dict[j].code == c) {
+                    val = dict[j].value;
+                    next = 1;
+                }
+            }
             ++cbc;
         }
-        while (m == length[c]);
+        while (next == 0);
 
         bit_pos -= (cbc-1);
         b &= (1 << bit_pos) - 1; // clear out bits left of bit_pos
-        result[j] = values[c][m];
+        dstr.push_back(val);
     }
 
-    result[total_chars] = '\0';
-    *len = total_chars;
-    return result;
+    return dstr;
 }
 
-uint8* huffman_compress(uint8* str, int str_len, int* compress_len)
+// wrapper function for compression with huffman coding
+// input: data pointer, data length in bytes
+// returns vector containing compressed data
+std::vector<uint8> huffman_compress(uint8* str, int str_len)
 {
-    char_freq cf[256] = {0};
-    int cf_len;
-    char_freq* cf_main = char_frequency(str, str_len, cf, &cf_len);
-    huffman h = build_huffman_tree(cf_main, cf_len);
-    uint8* ret =  huffman_cmpres(h, cf_main, cf_len, str, str_len, compress_len);
-    free(h.codes);
-    return ret;
+    std::vector<huff_node> hn = byte_frequency(str, str_len); // count frequency of each byte in the data
+    auto nonzero_iterator = std::find_if(hn.begin(), hn.end(), [](const huff_node& a) -> bool {return a.freq != 0;}); 
+    hn = std::vector<huff_node> (nonzero_iterator, hn.end()); // only keep bytes whose frequency is greater than zero
+    build_huffman_tree(hn);
+    std::vector<uint8> cfile = huffman_cmpres(str, str_len, hn);
+    return cfile;
 }
+
+// sort(hn.begin(), hn.end(), [](const huff_node& a, const huff_node& b) -> bool {return a.code < b.code;});
+// for (int i=0; i < hn.size(); i++)
+//     std::cout << hn[i].value << " "  << hn[i].freq << " " << hn[i].code << " " << hn[i].bit_count << std::endl;
+    

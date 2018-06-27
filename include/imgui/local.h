@@ -1,5 +1,7 @@
 #pragma once
 
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+
 #include <file.h>
 #include <vector>
 #include <string>
@@ -7,6 +9,10 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_glfw.h>
 
+static void error_callback(int error, const char* description)
+{
+    fprintf(stderr, "Error %d: %s\n", error, description);
+}
 
 void texture_image(Image* img)
 {
@@ -41,7 +47,7 @@ void reset_image(Image* img)
 
 
 //returns new size based on max side size
-ImVec2 resize_ui(int x, int y, int max_side_size)
+ImVec2 resize_ui(int x, int y, int max_side_size=300)
 {
     if (x > max_side_size && y > max_side_size) {
         float d = (float)(x > y ? x : y) / max_side_size;
@@ -113,4 +119,24 @@ int fs(std::string& s, std::string& cd, const char* popup)
         ImGui::OpenPopup(popup);
 
     return sindex;
+}
+
+//pops up the file list
+std::string image_select(int s)
+{
+    static std::vector<std::string> selected = {"",""};
+    ImGui::SameLine();
+    ImGui::Text(selected[s] == "" ? "<None>" : selected[s].c_str());
+
+    std::string current_dir;
+    int sindex;
+    if  (s == 0)
+        sindex = fs(selected[s], current_dir, "select 0");
+    else if (s == 1)
+        sindex = fs(selected[s], current_dir, "select 1");
+
+    if (sindex == -1 )
+        return "";
+    else
+        return current_dir + "/" + selected[s];
 }
