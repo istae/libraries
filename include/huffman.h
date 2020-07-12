@@ -123,6 +123,8 @@ std::vector<uint8> huffman_cmpres(uint8* str, int str_len, const std::vector<huf
 
         cstr.push_back(hn[j].bit_count);
         cstr.push_back(hn[j].value);
+
+        printf("%d\n", hn[j].bit_count);
     }
 
     //record file size, 4 bytes

@@ -85,7 +85,7 @@ char* fget(const char* path, int* len)
     char* buffer = NULL;
     FILE *f = fopen (path, "rb");
     if (f) {
-        fseek (f, 0, SEEK_END);
+        fseek(f, 0, SEEK_END);
         int length = ftell(f);
         fseek (f, 0, SEEK_SET);
         buffer = (char*)malloc(length+1); // + '\0'
